@@ -15,18 +15,31 @@
  * limitations under the License.
  */
 
- import { useState, useEffect } from 'react';
- import Head from 'next/head';
- import { useRouter } from 'next/router';
- import { Alert, Button, CircularProgress, Container, Dialog, DialogContent, DialogActions, Divider, IconButton, Snackbar, Stack, Typography } from '@mui/material';
- import AddIcon from '@mui/icons-material/Add';
- import NavBar from '../components/navbar';
- import ReceiptRow from '../components/receiptRow';
- import ExpenseDialog from '../components/expenseDialog';
- import { useAuth } from '../firebase/auth';
- import { deleteReceipt, getReceipts } from '../firebase/firestore';
- import { deleteImage } from '../firebase/storage';
- import styles from '../styles/dashboard.module.scss';
+import { useState, useEffect } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import {
+  Alert,
+  Button,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Divider,
+  IconButton,
+  Snackbar,
+  Stack,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import NavBar from "../components/navbar";
+import ReceiptRow from "../components/receiptRow";
+import ExpenseDialog from "../components/expenseDialog";
+import { useAuth } from "../firebase/auth";
+import { deleteReceipt, getReceipts } from "../firebase/firestore";
+import { deleteImage } from "../firebase/storage";
+import styles from "../styles/dashboard.module.scss";
 
 const ADD_SUCCESS = "Receipt was successfully added!";
 const ADD_ERROR = "Receipt was not successfully added!";
@@ -46,24 +59,25 @@ export const RECEIPTS_ENUM = Object.freeze({
 const SUCCESS_MAP = {
   [RECEIPTS_ENUM.add]: ADD_SUCCESS,
   [RECEIPTS_ENUM.edit]: EDIT_SUCCESS,
-  [RECEIPTS_ENUM.delete]: DELETE_SUCCESS
-}
+  [RECEIPTS_ENUM.delete]: DELETE_SUCCESS,
+};
 
 const ERROR_MAP = {
   [RECEIPTS_ENUM.add]: ADD_ERROR,
   [RECEIPTS_ENUM.edit]: EDIT_ERROR,
-  [RECEIPTS_ENUM.delete]: DELETE_ERROR
-}
+  [RECEIPTS_ENUM.delete]: DELETE_ERROR,
+};
 
 export default function Dashboard() {
   const { authUser, isLoading } = useAuth();
   const router = useRouter();
   const [action, setAction] = useState(RECEIPTS_ENUM.none);
-  
+
   // State involved in loading, setting, deleting, and updating receipts
   const [isLoadingReceipts, setIsLoadingReceipts] = useState(true);
   const [deleteReceiptId, setDeleteReceiptId] = useState("");
   const [deleteReceiptImageBucket, setDeleteReceiptImageBucket] = useState("");
+  const [receipts, setReceipts] = useState([]);
   const [updateReceipt, setUpdateReceipt] = useState({});
 
   // State involved in snackbar
@@ -73,37 +87,67 @@ export default function Dashboard() {
 
   // Sets appropriate snackbar message on whether @isSuccess and updates shown receipts if necessary
   const onResult = async (receiptEnum, isSuccess) => {
-    setSnackbarMessage(isSuccess ? SUCCESS_MAP[receiptEnum] : ERROR_MAP[receiptEnum]);
+    setSnackbarMessage(
+      isSuccess ? SUCCESS_MAP[receiptEnum] : ERROR_MAP[receiptEnum]
+    );
     isSuccess ? setSuccessSnackbar(true) : setErrorSnackbar(true);
     setAction(RECEIPTS_ENUM.none);
-  }
+  };
 
   // Listen to changes for loading and authUser, redirect if needed
   useEffect(() => {
+    if (!isLoading && !authUser) {
+      router.push("/");
+    }
   }, [authUser, isLoading]);
+
+  // Get receipts once user is logged in
+  useEffect(async () => {
+    if (authUser) {
+      const unsubscribe = await getReceipts(
+        authUser.uid,
+        setReceipts,
+        setIsLoadingReceipts
+      );
+      return () => unsubscribe();
+    }
+  }, [authUser]);
 
   // For all of the onClick functions, update the action and fields for updating
 
   const onClickAdd = () => {
     setAction(RECEIPTS_ENUM.add);
     setUpdateReceipt({});
-  }
+  };
 
   const onUpdate = (receipt) => {
     setAction(RECEIPTS_ENUM.edit);
     setUpdateReceipt(receipt);
-  }
+  };
 
   const onClickDelete = (id, imageBucket) => {
     setAction(RECEIPTS_ENUM.delete);
     setDeleteReceiptId(id);
     setDeleteReceiptImageBucket(imageBucket);
-  }
+  };
 
   const resetDelete = () => {
     setAction(RECEIPTS_ENUM.none);
     setDeleteReceiptId("");
-  }
+  };
+
+  const onDelete = async () => {
+    let isSuccess = true;
+    try {
+      await deleteReceipt(deleteReceiptId);
+      await deleteImage(deleteReceiptImageBucket);
+    } catch {
+      isSuccess = false;
+    }
+
+    resetDelete();
+    onResult(RECEIPTS_ENUM.delete, isSuccess);
+  };
 
   return (
     <div>
@@ -113,43 +157,85 @@ export default function Dashboard() {
 
       <NavBar />
       <Container>
-        <Snackbar open={showSuccessSnackbar} autoHideDuration={1500} onClose={() => setSuccessSnackbar(false)}
-                  anchorOrigin={{ horizontal: 'center', vertical: 'top' }}>
-          <Alert onClose={() => setSuccessSnackbar(false)} severity="success">{snackbarMessage}</Alert>
+        <Snackbar
+          open={showSuccessSnackbar}
+          autoHideDuration={1500}
+          onClose={() => setSuccessSnackbar(false)}
+          anchorOrigin={{ horizontal: "center", vertical: "top" }}
+        >
+          <Alert onClose={() => setSuccessSnackbar(false)} severity="success">
+            {snackbarMessage}
+          </Alert>
         </Snackbar>
-        <Snackbar open={showErrorSnackbar} autoHideDuration={1500} onClose={() => setErrorSnackbar(false)}
-                  anchorOrigin={{ horizontal: 'center', vertical: 'top' }}>
-          <Alert onClose={() => setErrorSnackbar(false)} severity="error">{snackbarMessage}</Alert>
+        <Snackbar
+          open={showErrorSnackbar}
+          autoHideDuration={1500}
+          onClose={() => setErrorSnackbar(false)}
+          anchorOrigin={{ horizontal: "center", vertical: "top" }}
+        >
+          <Alert onClose={() => setErrorSnackbar(false)} severity="error">
+            {snackbarMessage}
+          </Alert>
         </Snackbar>
         <Stack direction="row" sx={{ paddingTop: "1.5em" }}>
-          <Typography variant="h4" sx={{ lineHeight: 2, paddingRight: "0.5em" }}>
+          <Typography
+            variant="h4"
+            sx={{ lineHeight: 2, paddingRight: "0.5em" }}
+          >
             EXPENSES
           </Typography>
-          <IconButton aria-label="edit" color="secondary" onClick={onClickAdd} className={styles.addButton}>
+          <IconButton
+            aria-label="edit"
+            color="secondary"
+            onClick={onClickAdd}
+            className={styles.addButton}
+          >
             <AddIcon />
           </IconButton>
         </Stack>
+        {receipts.map((receipt) => (
+          <div key={receipt.id}>
+            <Divider light />
+            <ReceiptRow
+              receipt={receipt}
+              onEdit={() => onUpdate(receipt)}
+              onDelete={() => onClickDelete(receipt.id, receipt.imageBucket)}
+            />
+          </div>
+        ))}
       </Container>
-      <ExpenseDialog edit={updateReceipt}
-                     showDialog={action === RECEIPTS_ENUM.add || action === RECEIPTS_ENUM.edit}
-                     onError={(receiptEnum) => onResult(receiptEnum, false)}
-                     onSuccess={(receiptEnum) => onResult(receiptEnum, true)}
-                     onCloseDialog={() => setAction(RECEIPTS_ENUM.none)}>
-      </ExpenseDialog>
+      <ExpenseDialog
+        edit={updateReceipt}
+        showDialog={
+          action === RECEIPTS_ENUM.add || action === RECEIPTS_ENUM.edit
+        }
+        onError={(receiptEnum) => onResult(receiptEnum, false)}
+        onSuccess={(receiptEnum) => onResult(receiptEnum, true)}
+        onCloseDialog={() => setAction(RECEIPTS_ENUM.none)}
+      ></ExpenseDialog>
       <Dialog open={action === RECEIPTS_ENUM.delete} onClose={resetDelete}>
-        <Typography variant="h4" className={styles.title}>DELETE EXPENSE</Typography>
+        <Typography variant="h4" className={styles.title}>
+          DELETE EXPENSE
+        </Typography>
         <DialogContent>
-            <Alert severity="error">This will permanently delete your receipt!</Alert>
+          <Alert severity="error">
+            This will permanently delete your receipt!
+          </Alert>
         </DialogContent>
-        <DialogActions sx={{ padding: '0 24px 24px'}}>
+        <DialogActions sx={{ padding: "0 24px 24px" }}>
           <Button color="secondary" variant="outlined" onClick={resetDelete}>
-              Cancel
+            Cancel
           </Button>
-          <Button color="secondary" variant="contained" autoFocus>
-              Delete
+          <Button
+            color="secondary"
+            variant="contained"
+            autoFocus
+            onClick={onDelete}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
     </div>
-  )
+  );
 }

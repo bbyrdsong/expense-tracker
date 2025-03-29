@@ -15,6 +15,87 @@
  * limitations under the License.
  */
 
-import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where } from 'firebase/firestore'; 
-import { db } from './firebase';
-import { getDownloadURL } from './storage';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  where,
+  querySnapshot,
+} from "firebase/firestore";
+import { db } from "./firebase";
+import { getDownloadURL } from "./storage";
+
+const RECEIPTS_COLLECTION = "receipts";
+export async function addReceipt(
+  uid,
+  date,
+  locationName,
+  address,
+  items,
+  amount,
+  imageBucket
+) {
+  addDoc(collection(db, RECEIPTS_COLLECTION), {
+    uid,
+    date,
+    locationName,
+    address,
+    items,
+    amount,
+    imageBucket,
+  });
+}
+
+export async function getReceipts(uid, setReceipts, setIsLoadingReceipts) {
+  const q = query(
+    collection(db, RECEIPTS_COLLECTION),
+    where("uid", "==", uid),
+    orderBy("date", "desc")
+  );
+  const unsubscribe = onSnapshot(q, async (snapshot) => {
+    let receipts = [];
+    for (const doc of snapshot.docs) {
+      const receipt = doc.data();
+      await receipts.push({
+        ...receipt,
+        date: receipt["date"].toDate(),
+        id: doc.id,
+        imageUrl: await getDownloadURL(receipt["imageBucket"]),
+      });
+    }
+    setReceipts(receipts);
+    setIsLoadingReceipts(false);
+  });
+  return unsubscribe;
+}
+
+export function updateReceipt(
+  docId,
+  uid,
+  date,
+  locationName,
+  address,
+  items,
+  amount,
+  imageBucket
+) {
+  setDoc(doc(db, RECEIPTS_COLLECTION, docId), {
+    uid,
+    date,
+    locationName,
+    address,
+    items,
+    amount,
+    imageBucket,
+  });
+}
+
+export function deleteReceipt(docId) {
+  deleteDoc(doc(db, RECEIPTS_COLLECTION, docId));
+}
