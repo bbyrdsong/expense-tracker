@@ -21,13 +21,13 @@ import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBiPy-JR8CVmeLvwwKPGFwOvNi9nUTIy14",
+  apiKey: "",
   authDomain: "bb-expense-tracker.firebaseapp.com",
   projectId: "bb-expense-tracker",
   storageBucket: "bb-expense-tracker.firebasestorage.app",
-  messagingSenderId: "643245163809",
-  appId: "1:643245163809:web:9e0a1b78d64fec48612a60",
-  measurementId: "G-Y3X633DWKL",
+  messagingSenderId: "",
+  appId: "",
+  measurementId: "",
 };
 
 // Initialize Firebase
